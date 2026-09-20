@@ -10,32 +10,14 @@ if not site.exists():
 cloud = "https://nxtcloudv31.nxtpadsupport.workers.dev"
 changed = 0
 
-def remove_extra_header_nav(text):
-    header_pattern = r"(<header\b[^>]*>)(.*?)(</header>)"
-
-    def clean_header(match):
-        opening, body, closing = match.groups()
-        protected = []
-        pill_pattern = r'<div class="nxt-ecosystem"\s+aria-label="NXT ecosystem">.*?</div>'
-
-        def protect(pill_match):
-            protected.append(pill_match.group(0))
-            return f"__NXT_ECOSYSTEM_PILL_{len(protected)-1}__"
-
-        body = re.sub(pill_pattern, protect, body, count=1, flags=re.S)
-        body = re.sub(
-            r'<a\b[^>]*>\s*(?:DEX|Launchpad|NXT AI)\s*</a>',
-            "",
-            body,
-            flags=re.I,
-        )
-
-        for i, pill in enumerate(protected):
-            body = body.replace(f"__NXT_ECOSYSTEM_PILL_{i}__", pill)
-
-        return opening + body + closing
-
-    return re.sub(header_pattern, clean_header, text, flags=re.S | re.I)
+def remove_primary_nav(text):
+    # Remove the separate DEX / Launchpad / NXT AI header navigation.
+    # This targets only <nav class="nav"> and never touches the ecosystem pill.
+    pattern = r'<nav\b[^>]*\bclass=["\'][^"\']*\bnav\b[^"\']*["\'][^>]*>.*?</nav>'
+    text, count = re.subn(pattern, "", text, count=1, flags=re.S | re.I)
+    if count:
+        print("Removed standalone primary navigation")
+    return text
 
 for path in site.rglob("*"):
     if not path.is_file():
@@ -48,6 +30,7 @@ for path in site.rglob("*"):
 
     original = text
 
+    # Redirect any old standalone NXT PAD destination to the real Launchpad route.
     text = text.replace(
         "https://nxtpad.nxtpadsupport.workers.dev/",
         f"{cloud}/#launchpad"
@@ -58,23 +41,21 @@ for path in site.rglob("*"):
     )
 
     if path.name == "index.html":
+        # Preserve and explicitly set ONLY the ecosystem pill.
         nav = f'''<div class="nxt-ecosystem" aria-label="NXT ecosystem">
-        <a href="{cloud}/#home">CLOUD</a>
-        <a href="{cloud}/#launchpad">PAD</a>
-        <a href="{cloud}/#dex">DEX</a>
-        <a href="{cloud}/#ai">AI</a>
+        <a href="{cloud}/#home" data-pill="cloud">CLOUD</a>
+        <a href="{cloud}/#launchpad" data-pill="pad">PAD</a>
+        <a href="{cloud}/#dex" data-pill="dex">DEX</a>
+        <a href="{cloud}/#ai" data-pill="ai">AI</a>
       </div>'''
 
         pattern = r'<div class="nxt-ecosystem"\s+aria-label="NXT ecosystem">.*?</div>'
         text, nav_count = re.subn(pattern, nav, text, count=1, flags=re.S)
 
         if nav_count:
-            print("Forced ecosystem pill: CLOUD / PAD(#launchpad) / DEX / AI")
+            print("Set ecosystem pill: CLOUD / PAD(#launchpad) / DEX / AI")
 
-        cleaned = remove_extra_header_nav(text)
-        if cleaned != text:
-            text = cleaned
-            print("Removed standalone header links: DEX / Launchpad / NXT AI")
+        text = remove_primary_nav(text)
 
     if text != original:
         path.write_text(text, encoding="utf-8")
