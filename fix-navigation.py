@@ -11,6 +11,90 @@ cloud = "https://nxtcloudv31.nxtpadsupport.workers.dev"
 
 changed = 0
 
+router = r"""
+<script id="nxt-hash-router">
+(function () {
+  const routes = ["home", "pad", "dex", "ai"];
+
+  function currentRoute() {
+    const raw = (window.location.hash || "#home").replace(/^#/, "").toLowerCase();
+    return routes.includes(raw) ? raw : "home";
+  }
+
+  function setActive(route) {
+    document.querySelectorAll(".nxt-ecosystem a").forEach(function (a) {
+      const href = (a.getAttribute("href") || "").toLowerCase();
+      a.classList.toggle("active", href.endsWith("#" + route));
+      a.setAttribute("aria-current", href.endsWith("#" + route) ? "page" : "false");
+    });
+  }
+
+  function showRoute(route) {
+    setActive(route);
+
+    const selectors = [
+      '[data-page="' + route + '"]',
+      '[data-section="' + route + '"]',
+      '#page-' + route,
+      '.page-' + route
+    ];
+
+    const target = document.querySelector(selectors.join(","));
+    const candidates = Array.from(document.querySelectorAll(
+      "[data-page], [data-section], [id^='page-'], [class*='page-']"
+    ));
+
+    if (target && candidates.length) {
+      candidates.forEach(function (el) {
+        const matches =
+          el === target ||
+          el.getAttribute("data-page") === route ||
+          el.getAttribute("data-section") === route ||
+          el.id === "page-" + route ||
+          el.classList.contains("page-" + route);
+
+        el.classList.toggle("nxt-route-hidden", !matches);
+        el.setAttribute("aria-hidden", matches ? "false" : "true");
+      });
+    }
+
+    document.body.setAttribute("data-nxt-route", route);
+  }
+
+  function navigate(route) {
+    route = routes.includes(route) ? route : "home";
+    if (window.location.hash !== "#" + route) {
+      window.location.hash = route;
+    } else {
+      showRoute(route);
+    }
+  }
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest(".nxt-ecosystem a");
+    if (!link) return;
+
+    const href = link.getAttribute("href") || "";
+    const match = href.match(/#(home|pad|dex|ai)$/i);
+    if (!match) return;
+
+    event.preventDefault();
+    navigate(match[1].toLowerCase());
+  });
+
+  window.addEventListener("hashchange", function () {
+    showRoute(currentRoute());
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    showRoute(currentRoute());
+  });
+
+  showRoute(currentRoute());
+})();
+</script>
+"""
+
 for path in site.rglob("*"):
     if not path.is_file():
         continue
@@ -22,7 +106,6 @@ for path in site.rglob("*"):
 
     original = text
 
-    # Replace old NXT PAD destination anywhere in the extracted site.
     text = text.replace(
         "https://nxtpad.nxtpadsupport.workers.dev/",
         f"{cloud}/#pad"
@@ -32,10 +115,9 @@ for path in site.rglob("*"):
         f"{cloud}/#pad"
     )
 
-    # Force the exact NXT ecosystem pill in the main page.
     if path.name == "index.html":
         nav = f'''<div class="nxt-ecosystem" aria-label="NXT ecosystem">
-        <a class="active" href="{cloud}/#home">CLOUD</a>
+        <a href="{cloud}/#home">CLOUD</a>
         <a href="{cloud}/#pad">PAD</a>
         <a href="{cloud}/#dex">DEX</a>
         <a href="{cloud}/#ai">AI</a>
@@ -46,6 +128,14 @@ for path in site.rglob("*"):
 
         if nav_count:
             print("Forced ecosystem pill: HOME / PAD / DEX / AI")
+
+        if 'id="nxt-hash-router"' not in text:
+            text = text.replace("</body>", """
+<style id="nxt-hash-router-style">
+.nxt-route-hidden { display: none !important; }
+</style>
+""" + router + "\n</body>", 1)
+            print("Installed hash router")
 
     if text != original:
         path.write_text(text, encoding="utf-8")
