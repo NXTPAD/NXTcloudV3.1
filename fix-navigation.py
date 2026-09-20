@@ -32,7 +32,7 @@ for path in site.rglob("*"):
     # Replace ecosystem links by their visible button label.
     # This catches old links even if the ZIP contains a different URL.
     for label, url in targets.items():
-        pattern = rf'(<a\\b[^>]*\\bhref=["\''])[^"\'']*(["\''][^>]*>\\s*{label}\\s*</a>)'
+        pattern = rf'(<a\b[^>]*\bhref=["\''])[^"\'']*(["\''][^>]*>\s*{label}\s*</a>)'
         text = re.sub(pattern, rf'\\g<1>{url}\\g<2>', text, flags=re.I)
 
     # Also remove the known old PAD destination anywhere it occurs.
