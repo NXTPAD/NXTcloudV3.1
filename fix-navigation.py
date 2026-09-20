@@ -12,10 +12,10 @@ if not index.exists():
 html = index.read_text(encoding="utf-8")
 
 nav = """<div class="nxt-ecosystem" aria-label="NXT ecosystem">
-        <a class="active" href="https://nxtcloudv31.nxtpadsupport.workers.dev/">CLOUD</a>
-        <a href="https://nxtpad.nxtpadsupport.workers.dev/">PAD</a>
-        <a href="https://nxtdex.nxtpadsupport.workers.dev/">DEX</a>
-        <a href="https://nxtai.nxtpadsupport.workers.dev/">AI</a>
+        <a class="active" href="https://nxtcloudv31.nxtpadsupport.workers.dev/#cloud">CLOUD</a>
+        <a href="https://nxtcloudv31.nxtpadsupport.workers.dev/#pad">PAD</a>
+        <a href="https://nxtcloudv31.nxtpadsupport.workers.dev/#dex">DEX</a>
+        <a href="https://nxtcloudv31.nxtpadsupport.workers.dev/#ai">AI</a>
       </div>"""
 
 pattern = r'<div class="nxt-ecosystem"\s+aria-label="NXT ecosystem">.*?</div>'
