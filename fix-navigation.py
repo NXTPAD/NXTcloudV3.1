@@ -10,6 +10,33 @@ if not site.exists():
 cloud = "https://nxtcloudv31.nxtpadsupport.workers.dev"
 changed = 0
 
+def remove_extra_header_nav(text):
+    header_pattern = r"(<header\b[^>]*>)(.*?)(</header>)"
+
+    def clean_header(match):
+        opening, body, closing = match.groups()
+        protected = []
+        pill_pattern = r'<div class="nxt-ecosystem"\s+aria-label="NXT ecosystem">.*?</div>'
+
+        def protect(pill_match):
+            protected.append(pill_match.group(0))
+            return f"__NXT_ECOSYSTEM_PILL_{len(protected)-1}__"
+
+        body = re.sub(pill_pattern, protect, body, count=1, flags=re.S)
+        body = re.sub(
+            r'<a\b[^>]*>\s*(?:DEX|Launchpad|NXT AI)\s*</a>',
+            "",
+            body,
+            flags=re.I,
+        )
+
+        for i, pill in enumerate(protected):
+            body = body.replace(f"__NXT_ECOSYSTEM_PILL_{i}__", pill)
+
+        return opening + body + closing
+
+    return re.sub(header_pattern, clean_header, text, flags=re.S | re.I)
+
 for path in site.rglob("*"):
     if not path.is_file():
         continue
@@ -21,8 +48,6 @@ for path in site.rglob("*"):
 
     original = text
 
-    # Redirect any old standalone NXT PAD destination to the real
-    # Launchpad route on NXT CLOUD.
     text = text.replace(
         "https://nxtpad.nxtpadsupport.workers.dev/",
         f"{cloud}/#launchpad"
@@ -45,6 +70,11 @@ for path in site.rglob("*"):
 
         if nav_count:
             print("Forced ecosystem pill: CLOUD / PAD(#launchpad) / DEX / AI")
+
+        cleaned = remove_extra_header_nav(text)
+        if cleaned != text:
+            text = cleaned
+            print("Removed standalone header links: DEX / Launchpad / NXT AI")
 
     if text != original:
         path.write_text(text, encoding="utf-8")
