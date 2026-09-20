@@ -1,0 +1,129 @@
+name: Apply mobile header navigation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  mobile-nav:
+    if: startsWith(github.event.head_commit.message, 'Apply mobile header navigation')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch mobile header inside site archive
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import re
+          import zipfile
+          from pathlib import Path
+
+          zips = list(Path('.').glob('*.zip'))
+          if not zips:
+              raise SystemExit('No site zip found')
+
+          zip_path = zips[0]
+          tmp = zip_path.with_suffix('.tmp.zip')
+
+          marker = 'nxt-mobile-nav-pill'
+          script = r'''<script>
+(function () {
+  if (window.__nxtMobileNavInstalled) return;
+  window.__nxtMobileNavInstalled = true;
+
+  function isMobile() {
+    return window.matchMedia('(max-width: 700px)').matches;
+  }
+
+  function install() {
+    if (!isMobile()) {
+      var old = document.querySelector('.nxt-mobile-nav-pill');
+      if (old) old.remove();
+      document.querySelectorAll('[data-nxt-mobile-wallet]').forEach(function (el) {
+        el.style.removeProperty('display');
+      });
+      return;
+    }
+
+    var wallet = null;
+    document.querySelectorAll('button, a, [role="button"]').forEach(function (el) {
+      var t = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!wallet && t === 'connect wallet') wallet = el;
+    });
+
+    if (!wallet) return;
+
+    wallet.setAttribute('data-nxt-mobile-wallet', 'true');
+    wallet.style.setProperty('display', 'none', 'important');
+
+    var existing = document.querySelector('.nxt-mobile-nav-pill');
+    if (existing) return;
+
+    var pill = document.createElement('div');
+    pill.className = 'nxt-mobile-nav-pill';
+    pill.setAttribute('aria-label', 'NXT navigation');
+    pill.innerHTML =
+      '<a href="#home">CLOUD</a>' +
+      '<a href="#launchpad">PAD</a>' +
+      '<a href="#dex">DEX</a>' +
+      '<a href="#ai">AI</a>';
+
+    wallet.parentNode.insertBefore(pill, wallet);
+
+    var style = document.createElement('style');
+    style.textContent = [
+      '.nxt-mobile-nav-pill{display:flex;align-items:center;justify-content:center;gap:2px;padding:4px;border:1px solid rgba(120,190,255,.34);border-radius:999px;background:rgba(7,15,27,.82);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03),0 8px 24px rgba(0,0,0,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);white-space:nowrap;z-index:20;}',
+      '.nxt-mobile-nav-pill a{display:flex;align-items:center;justify-content:center;height:36px;padding:0 10px;border-radius:999px;color:#eef7ff;text-decoration:none;font-size:12px;font-weight:650;letter-spacing:.02em;}',
+      '.nxt-mobile-nav-pill a:active{background:rgba(91,190,255,.18);}',
+      '@media(min-width:701px){.nxt-mobile-nav-pill{display:none!important;}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  install();
+  window.addEventListener('resize', install, { passive: true });
+  window.addEventListener('hashchange', install, { passive: true });
+  new MutationObserver(function () { install(); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>'''
+
+          with zipfile.ZipFile(zip_path, 'r') as zin, zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
+              changed = False
+              for info in zin.infolist():
+                  data = zin.read(info.filename)
+                  if info.filename.lower().endswith('.html'):
+                      try:
+                          text = data.decode('utf-8')
+                      except UnicodeDecodeError:
+                          text = None
+                      if text is not None and marker not in text:
+                          if re.search(r'</body\\s*>', text, re.I):
+                              text = re.sub(r'</body\\s*>', script + '\\n</body>', text, count=1, flags=re.I)
+                          elif re.search(r'</html\\s*>', text, re.I):
+                              text = re.sub(r'</html\\s*>', script + '\\n</html>', text, count=1, flags=re.I)
+                          else:
+                              text += '\\n' + script + '\\n'
+                          data = text.encode('utf-8')
+                          changed = True
+                  zout.writestr(info, data)
+
+          if not changed:
+              tmp.unlink(missing_ok=True)
+              raise SystemExit('No HTML file was changed; refusing to commit an unmodified archive')
+
+          tmp.replace(zip_path)
+          print(f'Patched {zip_path}')
+          PY
+
+      - name: Commit archive
+        shell: bash
+        run: |
+          git config user.name "NXT"
+          git config user.email "noreply@nxtcloud.local"
+          git add *.zip
+          git commit -m "Apply mobile header navigation"
+          git push
