@@ -108,11 +108,11 @@ for path in site.rglob("*"):
 
     text = text.replace(
         "https://nxtpad.nxtpadsupport.workers.dev/",
-        f"{cloud}/#pad"
+        f"{cloud}/#launchpad"
     )
     text = text.replace(
         "https://nxtpad.nxtpadsupport.workers.dev",
-        f"{cloud}/#pad"
+        f"{cloud}/#launchpad"
     )
 
     if path.name == "index.html":
