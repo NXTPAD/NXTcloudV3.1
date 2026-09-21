@@ -75,6 +75,17 @@ def apply_mobile_header_nav(text):
       header.appendChild(pill);
     }
 
+    document.querySelectorAll('header button, header a').forEach(function (control) {
+      var label = (control.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (isMobile && label.indexOf('connect wallet') !== -1) {
+        control.setAttribute('data-nxt-mobile-wallet-hidden', 'true');
+        control.style.setProperty('display', 'none', 'important');
+      } else if (!isMobile && control.getAttribute('data-nxt-mobile-wallet-hidden') === 'true') {
+        control.style.removeProperty('display');
+        control.removeAttribute('data-nxt-mobile-wallet-hidden');
+      }
+    });
+
     var current = (location.hash || '#home').replace(/^#/, '').toLowerCase();
     pill.querySelectorAll('[data-pill]').forEach(function (item) {
       var target = (item.getAttribute('href') || '').split('#')[1] || item.getAttribute('data-pill') || '';
