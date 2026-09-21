@@ -71,20 +71,37 @@ def apply_mobile_header_nav(text):
 
     var isMobile = window.matchMedia('(max-width: 768px)').matches;
     var header = pill.closest('header') || document.querySelector('header');
-    if (isMobile && header && pill.parentElement !== header) {
-      header.appendChild(pill);
+    var walletControl = null;
+
+    if (header) {
+      var controls = header.querySelectorAll('button, a');
+      controls.forEach(function (control) {
+        var label = (control.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        var aria = (control.getAttribute('aria-label') || '').toLowerCase();
+        var action = (control.getAttribute('data-action') || '').toLowerCase();
+        var classes = (control.className || '').toString().toLowerCase();
+        if (!walletControl &&
+            (label.indexOf('connect wallet') !== -1 ||
+             aria.indexOf('connect wallet') !== -1 ||
+             action.indexOf('connect-wallet') !== -1 ||
+             classes.indexOf('connect-wallet') !== -1 ||
+             classes.indexOf('connectwallet') !== -1)) {
+          walletControl = control;
+        }
+      });
     }
 
-    document.querySelectorAll('header button, header a').forEach(function (control) {
-      var label = (control.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      if (isMobile && label.indexOf('connect wallet') !== -1) {
-        control.setAttribute('data-nxt-mobile-wallet-hidden', 'true');
-        control.style.setProperty('display', 'none', 'important');
-      } else if (!isMobile && control.getAttribute('data-nxt-mobile-wallet-hidden') === 'true') {
+    if (isMobile && walletControl && pill !== walletControl) {
+      // Put the ecosystem pill in the wallet button's exact DOM slot.
+      walletControl.parentNode.insertBefore(pill, walletControl);
+      walletControl.setAttribute('data-nxt-mobile-wallet-hidden', 'true');
+      walletControl.style.setProperty('display', 'none', 'important');
+    } else if (!isMobile) {
+      document.querySelectorAll('[data-nxt-mobile-wallet-hidden="true"]').forEach(function (control) {
         control.style.removeProperty('display');
         control.removeAttribute('data-nxt-mobile-wallet-hidden');
-      }
-    });
+      });
+    }
 
     var current = (location.hash || '#home').replace(/^#/, '').toLowerCase();
     pill.querySelectorAll('[data-pill]').forEach(function (item) {
