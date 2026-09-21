@@ -1,0 +1,55 @@
+name: Move Cloud Logo Above Hero On Mobile
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch cloud mobile hero
+        run: |
+          python3 - <<'PY'
+          import glob, zipfile, os, tempfile, re, shutil
+          zpath=glob.glob('*.zip')[0]
+          tmp=zpath+'.tmp'
+          changed=False
+          css='''<style id="nxt-cloud-mobile-hero">
+          @media (max-width:700px){
+            #home .hero-in{display:flex!important;flex-direction:column!important;align-items:stretch!important}
+            #home .hero-in .scene{order:1!important;width:min(100%,420px)!important;height:300px!important;margin:0 auto 6px!important;align-self:center!important}
+            #home .hero-in .hero-copy{order:2!important}
+            #home .hero-in .scene .scene-logo{max-width:100%!important;max-height:100%!important}
+          }
+          </style>'''
+          with zipfile.ZipFile(zpath,'r') as zin, zipfile.ZipFile(tmp,'w',zipfile.ZIP_DEFLATED) as zout:
+              for info in zin.infolist():
+                  data=zin.read(info.filename)
+                  if info.filename.lower().endswith(('.html','.htm')):
+                      text=data.decode('utf-8','ignore')
+                      if '<section class="page" id="home"' in text and 'id="nxt-cloud-mobile-hero"' not in text:
+                          if re.search(r'</head\\s*>',text,re.I):
+                              text=re.sub(r'</head\\s*>',lambda m:css+'\\n'+m.group(0),text,count=1,flags=re.I)
+                              data=text.encode('utf-8')
+                              changed=True
+                  zout.writestr(info,data)
+          if changed:
+              os.replace(tmp,zpath)
+              print('Patched cloud mobile hero:',zpath)
+          else:
+              os.remove(tmp)
+              print('No patch needed')
+          PY
+      - name: Commit patched ZIP
+        run: |
+          git config user.name "NXT"
+          git config user.email "nxtpadsupport@gmail.com"
+          git add *.zip
+          if git diff --cached --quiet; then
+            echo "No ZIP changes"
+          else
+            git commit -m "Move cloud hero logo above heading on mobile"
+            git push
+          fi
