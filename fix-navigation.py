@@ -40,14 +40,28 @@ def apply_mobile_header_nav(text):
     display: none !important;
   }
 
+  /* Free the mobile header space used by the theme switch. */
+  header button[aria-label*="theme" i],
+  header button[title*="theme" i],
+  header button[aria-label*="dark mode" i],
+  header button[aria-label*="light mode" i],
+  header button[data-theme-toggle],
+  header .theme-toggle,
+  header .theme-switch,
+  header .theme-button,
+  header .dark-mode-toggle,
+  header .light-mode-toggle {
+    display: none !important;
+  }
+
   header .nxt-ecosystem,
   .mobile-header .nxt-ecosystem,
   .site-header .nxt-ecosystem {
     display: inline-flex !important;
     align-items: center;
-    flex: 0 0 148px !important;
-    width: 148px !important;
-    max-width: 148px !important;
+    flex: 0 0 180px !important;
+    width: 180px !important;
+    max-width: 180px !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
@@ -60,11 +74,13 @@ def apply_mobile_header_nav(text):
     -webkit-tap-highlight-color: transparent;
     min-width: 0 !important;
     flex: 1 1 0 !important;
-    padding-left: 7px !important;
-    padding-right: 7px !important;
-    font-size: 0.72rem !important;
+    width: 25% !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    font-size: 0.68rem !important;
     white-space: nowrap !important;
     text-align: center !important;
+    box-sizing: border-box !important;
   }
 
   .nxt-ecosystem [data-pill].active,
@@ -84,6 +100,25 @@ def apply_mobile_header_nav(text):
 
     var isMobile = window.matchMedia('(max-width: 768px)').matches;
     var header = pill.closest('header') || document.querySelector('header');
+
+    // Hide the mobile theme/dark-light switch to give the ecosystem pill room.
+    if (isMobile && header) {
+      header.querySelectorAll('button, a').forEach(function (control) {
+        var label = (
+          (control.textContent || '') + ' ' +
+          (control.getAttribute('aria-label') || '') + ' ' +
+          (control.getAttribute('title') || '') + ' ' +
+          (control.getAttribute('data-testid') || '') + ' ' +
+          (control.className || '')
+        ).replace(/\\s+/g, ' ').toLowerCase();
+
+        if (/theme|dark.?mode|light.?mode|theme.?toggle|theme.?switch/.test(label)) {
+          control.setAttribute('data-nxt-mobile-theme-hidden', 'true');
+          control.style.setProperty('display', 'none', 'important');
+        }
+      });
+    }
+
     var walletControl = null;
 
     if (header) {
