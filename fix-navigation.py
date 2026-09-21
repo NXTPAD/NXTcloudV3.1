@@ -179,6 +179,74 @@ def apply_mobile_header_nav(text):
     return text
 
 
+
+def apply_launchpad_social_links(text):
+    """Add optional project social links to Step 2 (Define your token)."""
+    if 'id="nxt-launchpad-social-links"' in text:
+        return text
+
+    css = r'''
+<style id="nxt-launchpad-social-links-css">
+.nxt-social-links { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(120,160,200,.16); }
+.nxt-social-links h3 { margin: 0 0 5px; font-size: 1rem; }
+.nxt-social-links > p { margin: 0 0 14px; opacity: .68; font-size: .88rem; }
+.nxt-social-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.nxt-social-field { min-width: 0; }
+.nxt-social-field label { display: block; margin: 0 0 7px; font-size: .9rem; }
+.nxt-social-field input { width: 100%; box-sizing: border-box; }
+@media (max-width: 640px) { .nxt-social-grid { grid-template-columns: 1fr; } }
+</style>
+'''
+
+    js = r'''
+<script id="nxt-launchpad-social-links">
+(function () {
+  function addSocialLinks() {
+    if (document.getElementById('nxt-launchpad-social-links')) return;
+
+    var headings = document.querySelectorAll('h1, h2, h3, .step-title, [class*="step"]');
+    var title = null;
+    headings.forEach(function (node) {
+      if (!title && /define\s+your\s+token/i.test((node.textContent || '').trim())) title = node;
+    });
+    if (!title) return;
+
+    var scope = title.closest('form') || title.closest('section') || title.parentElement;
+    if (!scope) return;
+
+    var desc = scope.querySelector('textarea[name*="desc" i], textarea[id*="desc" i], textarea[placeholder*="description" i]');
+    if (!desc) return;
+    var anchor = desc.closest('.field, .form-field, .input-group, .form-group') || desc.parentElement;
+    if (!anchor || !anchor.parentNode) return;
+
+    var box = document.createElement('div');
+    box.id = 'nxt-launchpad-social-links';
+    box.className = 'nxt-social-links';
+    box.innerHTML = '<h3>Social links <span style="opacity:.55;font-weight:400">optional</span></h3>' +
+      '<p>Add the official links for your project. These will be included with your token details.</p>' +
+      '<div class="nxt-social-grid">' +
+        '<div class="nxt-social-field"><label for="nxt-social-website">Website</label><input id="nxt-social-website" name="website" type="url" placeholder="https://yourproject.com" autocomplete="url"></div>' +
+        '<div class="nxt-social-field"><label for="nxt-social-x">X / Twitter</label><input id="nxt-social-x" name="twitter" type="url" placeholder="https://x.com/yourproject" autocomplete="url"></div>' +
+        '<div class="nxt-social-field"><label for="nxt-social-telegram">Telegram</label><input id="nxt-social-telegram" name="telegram" type="url" placeholder="https://t.me/yourproject"></div>' +
+        '<div class="nxt-social-field"><label for="nxt-social-discord">Discord</label><input id="nxt-social-discord" name="discord" type="url" placeholder="https://discord.gg/yourinvite"></div>' +
+      '</div>';
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addSocialLinks);
+  else addSocialLinks();
+  setTimeout(addSocialLinks, 300);
+  setTimeout(addSocialLinks, 1000);
+})();
+</script>
+'''
+    if '</head>' in text:
+        text = text.replace('</head>', css + '</head>', 1)
+    if '</body>' in text:
+        text = text.replace('</body>', js + '</body>', 1)
+    return text
+
+
 def apply_coin_logos(text, path):
     """Replace known-token letter avatars with real logo images, with initials as fallback."""
     if path.name == "data.js":
@@ -291,6 +359,7 @@ for path in site.rglob("*"):
 
         text = remove_primary_nav(text)
         text = apply_mobile_header_nav(text)
+        text = apply_launchpad_social_links(text)
 
     text = apply_coin_logos(text, path)
 
