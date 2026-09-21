@@ -21,6 +21,88 @@ def remove_primary_nav(text):
     return text
 
 
+
+def apply_mobile_header_nav(text):
+    """On small screens, replace the wallet CTA with the existing ecosystem pill."""
+    if 'id="nxt-mobile-ecosystem-nav"' in text:
+        return text
+
+    mobile_css = r'''
+<style id="nxt-mobile-ecosystem-nav">
+@media (max-width: 768px) {
+  header .connect-wallet,
+  header .connectWallet,
+  header [class*="connect-wallet"],
+  header [class*="connectWallet"],
+  header button[aria-label*="Connect Wallet" i],
+  header button[data-action*="connect-wallet" i],
+  header a[aria-label*="Connect Wallet" i] {
+    display: none !important;
+  }
+
+  header .nxt-ecosystem,
+  .mobile-header .nxt-ecosystem,
+  .site-header .nxt-ecosystem {
+    display: inline-flex !important;
+    align-items: center;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .nxt-ecosystem [data-pill],
+  .nxt-ecosystem a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nxt-ecosystem [data-pill].active,
+  .nxt-ecosystem [data-pill][aria-current="page"] {
+    opacity: 1 !important;
+    transform: translateY(-1px);
+  }
+}
+</style>
+'''
+    mobile_js = r'''
+<script id="nxt-mobile-ecosystem-nav">
+(function () {
+  function setupMobileNav() {
+    var pill = document.querySelector('.nxt-ecosystem');
+    if (!pill) return;
+
+    var isMobile = window.matchMedia('(max-width: 768px)').matches;
+    var header = pill.closest('header') || document.querySelector('header');
+    if (isMobile && header && pill.parentElement !== header) {
+      header.appendChild(pill);
+    }
+
+    var current = (location.hash || '#home').replace(/^#/, '').toLowerCase();
+    pill.querySelectorAll('[data-pill]').forEach(function (item) {
+      var target = (item.getAttribute('href') || '').split('#')[1] || item.getAttribute('data-pill') || '';
+      var active = target.toLowerCase() === current ||
+                   (current === 'home' && item.getAttribute('data-pill') === 'cloud');
+      item.classList.toggle('active', active);
+      if (active) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupMobileNav);
+  } else {
+    setupMobileNav();
+  }
+  window.addEventListener('hashchange', setupMobileNav);
+  window.addEventListener('resize', setupMobileNav);
+})();
+</script>
+'''
+    if '</head>' in text:
+        text = text.replace('</head>', mobile_css + '\n</head>', 1)
+    if '</body>' in text:
+        text = text.replace('</body>', mobile_js + '\n</body>', 1)
+    return text
+
+
 def apply_coin_logos(text, path):
     """Replace known-token letter avatars with real logo images, with initials as fallback."""
     if path.name == "data.js":
@@ -132,6 +214,7 @@ for path in site.rglob("*"):
             print("Set ecosystem pill: CLOUD / PAD(#launchpad) / DEX / AI")
 
         text = remove_primary_nav(text)
+        text = apply_mobile_header_nav(text)
 
     text = apply_coin_logos(text, path)
 
