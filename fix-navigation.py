@@ -45,6 +45,12 @@ def apply_mobile_header_nav(text):
   .site-header .nxt-ecosystem {
     display: inline-flex !important;
     align-items: center;
+    flex: 0 0 148px !important;
+    width: 148px !important;
+    max-width: 148px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
     visibility: visible !important;
     opacity: 1 !important;
   }
@@ -52,6 +58,13 @@ def apply_mobile_header_nav(text):
   .nxt-ecosystem [data-pill],
   .nxt-ecosystem a {
     -webkit-tap-highlight-color: transparent;
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+    text-align: center !important;
   }
 
   .nxt-ecosystem [data-pill].active,
