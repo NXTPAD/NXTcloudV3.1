@@ -1,0 +1,25 @@
+name: Diagnose Mobile Nav Archive
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnose
+        run: |
+          git show 17221a7f162f744be62721959ef3c6b72d851e36:"nxtcloudv2-restyled (1).zip" > /tmp/new.zip
+          python3 - <<'PY'
+          import zipfile,re
+          with zipfile.ZipFile('/tmp/new.zip') as z:
+            for n in z.namelist():
+              if n.lower().endswith(('.html','.htm')):
+                s=z.read(n).decode('utf-8','ignore')
+                if 'nxt-mobile-nav-pill' in s or 'NXT navigation' in s:
+                  print('FOUND',n)
+                  p=s.find('nxt-mobile-nav-pill')
+                  print(s[max(0,p-2500):p+5000])
+          PY
