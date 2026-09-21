@@ -181,107 +181,90 @@ def apply_mobile_header_nav(text):
 
 
 
+
 def apply_launchpad_social_links(text):
-    """Add optional project social links directly below the Description field in Launchpad Step 2."""
-    # Replace the previous injector completely so old placement logic cannot survive.
-    if 'id="nxt-launchpad-social-links-v2"' in text:
+    """Add optional project social links directly below Description in Launchpad Step 2."""
+    if 'id="nxt-launchpad-social-links-v3"' in text:
         return text
 
     css = r'''
 <style id="nxt-launchpad-social-links-css">
-#nxt-launchpad-social-links-v2 {
-  margin: 18px 0 0;
-  padding: 18px 0 0;
+#nxt-launchpad-social-links-v3 {
+  display: block !important;
+  width: 100% !important;
+  margin: 20px 0 0 !important;
+  padding: 18px 0 0 !important;
   border-top: 1px solid rgba(120,160,200,.16);
+  box-sizing: border-box !important;
 }
-#nxt-launchpad-social-links-v2 h3 { margin: 0 0 6px; font-size: 1rem; }
-#nxt-launchpad-social-links-v2 > p { margin: 0 0 14px; opacity: .68; font-size: .88rem; line-height: 1.45; }
-#nxt-launchpad-social-links-v2 .nxt-social-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+#nxt-launchpad-social-links-v3 h3 { margin: 0 0 6px; font-size: 1rem; }
+#nxt-launchpad-social-links-v3 > p { margin: 0 0 14px; opacity: .68; font-size: .88rem; line-height: 1.45; }
+#nxt-launchpad-social-links-v3 .nxt-social-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
 }
-#nxt-launchpad-social-links-v2 .nxt-social-field { min-width: 0; }
-#nxt-launchpad-social-links-v2 .nxt-social-field label {
-  display: block;
-  margin: 0 0 7px;
-  font-size: .9rem;
-}
-#nxt-launchpad-social-links-v2 .nxt-social-field input {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
+#nxt-launchpad-social-links-v3 .nxt-social-field { min-width: 0; }
+#nxt-launchpad-social-links-v3 label { display: block; margin: 0 0 7px; font-size: .9rem; }
+#nxt-launchpad-social-links-v3 input {
+  display: block !important; width: 100% !important; min-width: 0 !important;
+  min-height: 46px !important; box-sizing: border-box !important;
 }
 @media (max-width: 640px) {
-  #nxt-launchpad-social-links-v2 .nxt-social-grid { grid-template-columns: 1fr; }
+  #nxt-launchpad-social-links-v3 .nxt-social-grid { grid-template-columns: 1fr; }
 }
 </style>
 '''
 
     js = r'''
-<script id="nxt-launchpad-social-links-v2">
+<script id="nxt-launchpad-social-links-v3">
 (function () {
-  var INSERTED_ID = 'nxt-launchpad-social-links-v2';
+  var ID = 'nxt-launchpad-social-links-v3';
 
-  function isDefineTokenStep() {
-    return /define\s+your\s+token/i.test(document.body ? document.body.innerText : '');
+  function textOf(el) {
+    return (el && (el.textContent || '') || '').replace(/\s+/g, ' ').trim();
   }
 
   function findDescriptionField() {
-    // Step 2 is rendered dynamically, so do not depend on the heading's DOM parent.
-    // Find the actual Description textarea anywhere in the rendered form.
-    var fields = document.querySelectorAll('textarea, input');
-    var found = null;
+    var all = document.querySelectorAll('textarea, input, [contenteditable="true"]');
+    var best = null;
 
-    fields.forEach(function (field) {
-      if (found) return;
-      var name = (field.getAttribute('name') || '').toLowerCase();
-      var id = (field.getAttribute('id') || '').toLowerCase();
-      var placeholder = (field.getAttribute('placeholder') || '').toLowerCase();
-      var aria = (field.getAttribute('aria-label') || '').toLowerCase();
-
-      if (
-        field.tagName.toLowerCase() === 'textarea' &&
-        (name.indexOf('desc') !== -1 ||
-         id.indexOf('desc') !== -1 ||
-         placeholder.indexOf('description') !== -1 ||
-         aria.indexOf('description') !== -1)
-      ) {
-        found = field;
-      }
+    // First use attributes. This works even when the label is rendered separately.
+    all.forEach(function (el) {
+      if (best) return;
+      var s = (
+        (el.getAttribute('name') || '') + ' ' +
+        (el.getAttribute('id') || '') + ' ' +
+        (el.getAttribute('placeholder') || '') + ' ' +
+        (el.getAttribute('aria-label') || '')
+      ).toLowerCase();
+      if (/description|(^|[\W_])desc([\W_]|$)/.test(s)) best = el;
     });
+    if (best) return best;
 
-    if (found) return found;
+    // Then use the actual visible "Description optional" label from Step 2.
+    var labels = document.querySelectorAll('label, div, span, p');
+    for (var i = 0; i < labels.length; i++) {
+      var label = labels[i];
+      if (!/^\s*description\b/i.test(textOf(label))) continue;
 
-    // Fallback: locate a visible label containing "Description" and use its nearby textarea.
-    var labels = document.querySelectorAll('label');
-    labels.forEach(function (label) {
-      if (found || !/^\s*description\b/i.test((label.textContent || '').trim())) return;
-      var targetId = label.getAttribute('for');
-      if (targetId) {
-        var target = document.getElementById(targetId);
-        if (target && target.tagName.toLowerCase() === 'textarea') found = target;
+      var node = label;
+      for (var level = 0; level < 6 && node; level++, node = node.parentElement) {
+        var candidate = node.querySelector('textarea, input, [contenteditable="true"]');
+        if (candidate && !candidate.closest('#' + ID)) return candidate;
       }
-      if (!found) {
-        var parent = label.parentElement;
-        if (parent) {
-          var textarea = parent.querySelector('textarea');
-          if (textarea) found = textarea;
-        }
-      }
-    });
+    }
 
-    return found;
+    return null;
   }
 
-  function getFieldContainer(field) {
+  function fieldContainer(field) {
     var node = field;
-    for (var i = 0; i < 6 && node; i++, node = node.parentElement) {
+    for (var i = 0; i < 8 && node; i++, node = node.parentElement) {
+      if (!node.parentNode) break;
       var cls = (node.className || '').toString().toLowerCase();
+      var hasDescriptionText = /description/.test(textOf(node).toLowerCase());
       if (
-        /field|form-group|form-field|input-group|form-control|formitem|form-item/.test(cls) &&
-        node.querySelector &&
-        node.querySelector('textarea') === field
+        (/(field|form-group|form-field|input-group|form-item|formitem|control)/.test(cls) || hasDescriptionText) &&
+        node.parentNode
       ) {
         return node;
       }
@@ -290,57 +273,53 @@ def apply_launchpad_social_links(text):
   }
 
   function addSocialLinks() {
-    if (!isDefineTokenStep()) return;
-    if (document.getElementById(INSERTED_ID)) return;
+    // Only show this on the actual Launchpad Step 2 screen.
+    if (!document.body || !/define\s+your\s+token/i.test(document.body.innerText || '')) return;
+    if (document.getElementById(ID)) return;
 
     var desc = findDescriptionField();
     if (!desc) return;
 
-    var anchor = getFieldContainer(desc);
+    var anchor = fieldContainer(desc);
     if (!anchor || !anchor.parentNode) return;
 
     var box = document.createElement('div');
-    box.id = INSERTED_ID;
+    box.id = ID;
     box.innerHTML =
       '<h3>Social links <span style="opacity:.55;font-weight:400">optional</span></h3>' +
-      '<p>Add the official links for your project. These will be included with your token details.</p>' +
+      '<p>Add the official links for your project.</p>' +
       '<div class="nxt-social-grid">' +
-        '<div class="nxt-social-field"><label for="nxt-social-website">Website</label><input id="nxt-social-website" name="website" type="url" placeholder="https://yourproject.com" autocomplete="url"></div>' +
-        '<div class="nxt-social-field"><label for="nxt-social-x">X / Twitter</label><input id="nxt-social-x" name="twitter" type="url" placeholder="https://x.com/yourproject" autocomplete="url"></div>' +
+        '<div class="nxt-social-field"><label for="nxt-social-website">Website</label><input id="nxt-social-website" name="website" type="url" placeholder="https://yourproject.com"></div>' +
+        '<div class="nxt-social-field"><label for="nxt-social-x">X / Twitter</label><input id="nxt-social-x" name="twitter" type="url" placeholder="https://x.com/yourproject"></div>' +
         '<div class="nxt-social-field"><label for="nxt-social-telegram">Telegram</label><input id="nxt-social-telegram" name="telegram" type="url" placeholder="https://t.me/yourproject"></div>' +
         '<div class="nxt-social-field"><label for="nxt-social-discord">Discord</label><input id="nxt-social-discord" name="discord" type="url" placeholder="https://discord.gg/yourinvite"></div>' +
       '</div>';
 
-    // This is the critical placement: immediately after the Description field's
-    // rendered container, inside the same Step 2 form area.
+    // Insert immediately after the Description field's container.
     anchor.parentNode.insertBefore(box, anchor.nextSibling);
   }
 
-  function schedule() {
+  function run() {
     addSocialLinks();
-    setTimeout(addSocialLinks, 100);
-    setTimeout(addSocialLinks, 400);
-    setTimeout(addSocialLinks, 1000);
-    setTimeout(addSocialLinks, 2000);
-    setTimeout(addSocialLinks, 4000);
+    [100, 300, 700, 1500, 3000, 6000].forEach(function (ms) {
+      setTimeout(addSocialLinks, ms);
+    });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', schedule);
+    document.addEventListener('DOMContentLoaded', run);
   } else {
-    schedule();
+    run();
   }
 
-  // Launchpad is a SPA and Step 2 can be mounted/re-mounted after navigation.
-  // Watch for that render and put the fields back directly below Description.
   if (window.MutationObserver && document.body) {
     var observer = new MutationObserver(function () {
-      if (!document.getElementById(INSERTED_ID)) addSocialLinks();
+      if (!document.getElementById(ID)) addSocialLinks();
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {childList:true, subtree:true});
   }
 
-  window.addEventListener('hashchange', schedule);
+  window.addEventListener('hashchange', run);
 })();
 </script>
 '''
