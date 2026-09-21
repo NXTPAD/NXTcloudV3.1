@@ -83,7 +83,7 @@ jobs:
                 try: text=data.decode('utf-8')
                 except UnicodeDecodeError: text=None
                 if text is not None and 'nxt-mobile-nav-pill-script' not in text:
-                  text=re.sub(r'</body\s*>',js+'\n</body>',text,count=1,flags=re.I)
+                  text=re.sub(r'</body\s*>',lambda m: js+'\n'+m.group(0),text,count=1,flags=re.I)
                   data=text.encode('utf-8')
                   changed=True
               zout.writestr(info,data)
