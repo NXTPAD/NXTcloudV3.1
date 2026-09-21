@@ -182,129 +182,119 @@ def apply_mobile_header_nav(text):
 
 
 
-def apply_launchpad_social_links(text):
-    """Add optional project social links directly below Description in Launchpad Step 2 for every chain."""
-    # Remove any earlier injected versions, including a malformed version that was
-    # rendered as literal JavaScript at the bottom of the page.
-    text = re.sub(r'<style[^>]*id=["\']nxt-launchpad-social-links-css(?:-v3)?["\'][^>]*>.*?</style>', '', text, flags=re.S | re.I)
-    text = re.sub(r'<script[^>]*id=["\']nxt-launchpad-social-links-v3["\'][^>]*>.*?</script>', '', text, flags=re.S | re.I)
-    text = re.sub(r'\(function\s*\(\)\s*\{\s*var ID\s*=\s*[\'"]nxt-launchpad-social-links-v3[\'"].*?\}\)\(\)\s*;?', '', text, flags=re.S)
-    if 'id="nxt-launchpad-social-links-v4"' in text:
-        return text
 
-    """Add the same optional social-link section to Launchpad Step 2 for every supported chain."""
-    if 'id="nxt-launchpad-social-links-v4"' in text:
+def apply_launchpad_social_links(text):
+    """Inject the Launchpad Step 2 social-link fields for every supported chain."""
+    # Remove all earlier versions so the deployment script is self-cleaning.
+    text = re.sub(r'<style[^>]*id=["\']nxt-launchpad-social-links-css[^"\']*["\'][^>]*>.*?</style>', '', text, flags=re.S | re.I)
+    text = re.sub(r'<script[^>]*id=["\']nxt-launchpad-social-links-v[0-9]+["\'][^>]*>.*?</script>', '', text, flags=re.S | re.I)
+    text = re.sub(r'\(function\s*\(\)\s*\{\s*var ID\s*=\s*["\']nxt-launchpad-social-links-v[0-9]+["\'].*?\}\)\(\)\s*;?', '', text, flags=re.S)
+    if 'id="nxt-launchpad-social-links-v5"' in text:
         return text
 
     css = r'''
-<style id="nxt-launchpad-social-links-css-v4">
-#nxt-launchpad-social-links-v4 {
-  display: block !important;
-  width: 100% !important;
-  margin: 20px 0 0 !important;
-  padding: 18px 0 0 !important;
-  border-top: 1px solid rgba(120,160,200,.16);
-  box-sizing: border-box !important;
-  clear: both !important;
+<style id="nxt-launchpad-social-links-css-v5">
+#nxt-launchpad-social-links-v5 {
+  display:block !important;
+  width:100% !important;
+  margin:20px 0 0 !important;
+  padding:18px 0 0 !important;
+  border-top:1px solid rgba(120,160,200,.16);
+  clear:both !important;
+  box-sizing:border-box !important;
 }
-#nxt-launchpad-social-links-v4 h3 { margin: 0 0 6px; font-size: 1rem; }
-#nxt-launchpad-social-links-v4 > p { margin: 0 0 14px; opacity: .68; font-size: .88rem; line-height: 1.45; }
-#nxt-launchpad-social-links-v4 .nxt-social-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
-}
-#nxt-launchpad-social-links-v4 .nxt-social-field { min-width: 0; }
-#nxt-launchpad-social-links-v4 label { display: block; margin: 0 0 7px; font-size: .9rem; }
-#nxt-launchpad-social-links-v4 input {
-  display: block !important; width: 100% !important; min-width: 0 !important;
-  min-height: 46px !important; box-sizing: border-box !important;
-}
-@media (max-width: 640px) {
-  #nxt-launchpad-social-links-v4 .nxt-social-grid { grid-template-columns: 1fr; }
+#nxt-launchpad-social-links-v5 h3 { margin:0 0 6px; font-size:1rem; }
+#nxt-launchpad-social-links-v5 .nxt-social-help { margin:0 0 14px; opacity:.68; font-size:.88rem; line-height:1.45; }
+#nxt-launchpad-social-links-v5 .nxt-social-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+#nxt-launchpad-social-links-v5 .nxt-social-field { min-width:0; }
+#nxt-launchpad-social-links-v5 label { display:block; margin:0 0 7px; font-size:.9rem; }
+#nxt-launchpad-social-links-v5 input { display:block !important; width:100% !important; min-width:0 !important; min-height:46px !important; box-sizing:border-box !important; }
+@media (max-width:640px) {
+  #nxt-launchpad-social-links-v5 .nxt-social-grid { grid-template-columns:1fr; }
 }
 </style>
 '''
 
     js = r'''
-<script id="nxt-launchpad-social-links-v4">
+<script id="nxt-launchpad-social-links-v5">
 (function () {
-  var ID = 'nxt-launchpad-social-links-v4';
-  var running = false;
+  var ID = 'nxt-launchpad-social-links-v5';
+  var timer = null;
 
-  function clean(s) {
-    return (s || '').replace(/\s+/g, ' ').trim();
+  function clean(value) {
+    return (value || '').replace(/\s+/g, ' ').trim();
   }
 
-  function isLaunchpadStep2() {
+  function launchpadStep2() {
     var body = clean(document.body && document.body.innerText);
-    return /define\s+your\s+token/i.test(body) &&
-           /token\s+name/i.test(body) &&
-           /total\s+supply/i.test(body);
+    var hash = (location.hash || '').toLowerCase();
+    return hash.indexOf('launchpad') !== -1 ||
+      (/define\s+your\s+token/i.test(body) &&
+       /token\s+name/i.test(body) &&
+       /total\s+supply/i.test(body));
   }
 
-  function directText(el) {
-    var out = '';
-    for (var i = 0; i < el.childNodes.length; i++) {
-      if (el.childNodes[i].nodeType === 3) out += ' ' + el.childNodes[i].nodeValue;
-    }
-    return clean(out);
+  function isBox(el) {
+    if (!el || el.nodeType !== 1) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    return tag === 'textarea' || tag === 'input' ||
+      el.getAttribute('contenteditable') === 'true' ||
+      el.getAttribute('role') === 'textbox';
   }
 
-  function findDescriptionField() {
-    var fields = document.querySelectorAll('textarea, input, [contenteditable="true"]');
+  function fieldText(el) {
+    return clean(
+      (el.getAttribute('name') || '') + ' ' +
+      (el.getAttribute('id') || '') + ' ' +
+      (el.getAttribute('placeholder') || '') + ' ' +
+      (el.getAttribute('aria-label') || '')
+    ).toLowerCase();
+  }
 
-    // Prefer an actual form control whose attributes identify it as Description.
-    for (var i = 0; i < fields.length; i++) {
-      var field = fields[i];
-      var attrs = clean(
-        (field.getAttribute('name') || '') + ' ' +
-        (field.getAttribute('id') || '') + ' ' +
-        (field.getAttribute('placeholder') || '') + ' ' +
-        (field.getAttribute('aria-label') || '')
-      ).toLowerCase();
-      if (/\bdescription\b|\bdesc\b/.test(attrs)) return field;
+  function findDescription() {
+    var boxes = document.querySelectorAll('textarea,input,[contenteditable="true"],[role="textbox"]');
+
+    // First choice: the control itself identifies as Description.
+    for (var i = 0; i < boxes.length; i++) {
+      if (/\bdescription\b|\bdesc\b/.test(fieldText(boxes[i]))) return boxes[i];
     }
 
-    // Find the visible Description label, then locate its nearest field.
-    var candidates = document.querySelectorAll('label, div, span, p');
-    for (var j = 0; j < candidates.length; j++) {
-      var label = candidates[j];
-      var own = directText(label);
-      var full = clean(label.textContent);
+    // Second choice: find the exact visible Description label/text and walk
+    // upward to its field wrapper. This handles custom React/Vue form markup.
+    var nodes = document.querySelectorAll('label,span,div,p');
+    for (var j = 0; j < nodes.length; j++) {
+      var node = nodes[j];
+      var txt = clean(node.textContent);
+      if (!/^description(?:\s+optional)?$/i.test(txt)) continue;
 
-      if (!/^description(?:\s+optional)?$/i.test(own) &&
-          !/^description(?:\s+optional)?$/i.test(full)) continue;
-
-      // If it is a label with a "for" target, use that exact control.
-      var targetId = label.getAttribute('for');
-      if (targetId) {
-        var target = document.getElementById(targetId);
-        if (target && !target.closest('#' + ID)) return target;
+      var forId = node.getAttribute('for');
+      if (forId) {
+        var target = document.getElementById(forId);
+        if (target && isBox(target)) return target;
       }
 
-      // Walk upward, but only accept a small wrapper containing one field.
-      var node = label;
-      for (var level = 0; level < 8 && node; level++, node = node.parentElement) {
-        var inside = node.querySelectorAll('textarea, input, [contenteditable="true"]');
-        if (inside.length === 1 && !inside[0].closest('#' + ID)) return inside[0];
+      var parent = node;
+      for (var level = 0; level < 8 && parent; level++, parent = parent.parentElement) {
+        var inside = parent.querySelectorAll('textarea,input,[contenteditable="true"],[role="textbox"]');
+        if (inside.length === 1) return inside[0];
       }
     }
 
-    // Final fallback: the Description field is normally the last textarea/input
-    // in Step 2 before the Back/Review controls.
-    if (isLaunchpadStep2()) {
+    // Third choice: in Step 2 the description is the last multiline control.
+    if (launchpadStep2()) {
       var textareas = document.querySelectorAll('textarea');
       if (textareas.length) return textareas[textareas.length - 1];
     }
-
     return null;
   }
 
-  function createBox() {
-    var box = document.createElement('div');
+  function makeBox() {
+    var box = document.createElement('section');
     box.id = ID;
+    box.setAttribute('data-nxt-social-section', 'true');
     box.innerHTML =
       '<h3>Social links <span style="opacity:.55;font-weight:400">optional</span></h3>' +
-      '<p>Add the official links for this project. These fields are available on every Launchpad chain.</p>' +
+      '<p class="nxt-social-help">Add the official links for this project.</p>' +
       '<div class="nxt-social-grid">' +
         '<div class="nxt-social-field"><label for="nxt-social-website">Website</label><input id="nxt-social-website" name="website" type="url" autocomplete="url" placeholder="https://yourproject.com"></div>' +
         '<div class="nxt-social-field"><label for="nxt-social-x">X / Twitter</label><input id="nxt-social-x" name="twitter" type="url" placeholder="https://x.com/yourproject"></div>' +
@@ -314,25 +304,51 @@ def apply_launchpad_social_links(text):
     return box;
   }
 
+  function insertAfterDescription(desc) {
+    if (!desc || !desc.parentElement) return false;
+
+    // Prefer the smallest wrapper that contains the Description label and field.
+    var wrapper = desc.parentElement;
+    var label = null;
+    var parent = desc.parentElement;
+    for (var level = 0; level < 6 && parent; level++, parent = parent.parentElement) {
+      var labels = parent.querySelectorAll('label');
+      for (var i = 0; i < labels.length; i++) {
+        if (/^description(?:\s+optional)?$/i.test(clean(labels[i].textContent))) {
+          label = labels[i];
+          break;
+        }
+      }
+      if (label && parent.querySelectorAll('textarea,input,[contenteditable="true"],[role="textbox"]').length <= 2) {
+        wrapper = parent;
+        break;
+      }
+    }
+
+    var box = makeBox();
+
+    // Keep it inside the same form when possible so the values participate in
+    // the existing token-creation submission.
+    var form = desc.closest('form');
+    if (form && !wrapper.closest('form')) {
+      form.appendChild(box);
+    } else {
+      wrapper.parentNode.insertBefore(box, wrapper.nextSibling);
+    }
+    return true;
+  }
+
   function addSocialLinks() {
-    if (!document.body || !isLaunchpadStep2()) return;
-    if (document.getElementById(ID) || running) return;
-
-    var desc = findDescriptionField();
-    if (!desc || !desc.parentNode) return;
-
-    running = true;
-    var box = createBox();
-
-    // Put the block immediately after the Description control itself.
-    // This avoids depending on framework-specific wrapper class names.
-    desc.parentNode.insertBefore(box, desc.nextSibling);
-    running = false;
+    if (!document.body || !launchpadStep2()) return;
+    if (document.getElementById(ID)) return;
+    var desc = findDescription();
+    if (!desc) return;
+    insertAfterDescription(desc);
   }
 
   function run() {
     addSocialLinks();
-    [100, 300, 700, 1200, 2000, 3500, 6000, 10000].forEach(function (ms) {
+    [50,150,300,600,1000,1800,3000,5000,8000,12000].forEach(function (ms) {
       setTimeout(addSocialLinks, ms);
     });
   }
@@ -345,7 +361,10 @@ def apply_launchpad_social_links(text):
 
   if (window.MutationObserver) {
     var observer = new MutationObserver(function () {
-      if (!document.getElementById(ID)) addSocialLinks();
+      if (!document.getElementById(ID)) {
+        clearTimeout(timer);
+        timer = setTimeout(addSocialLinks, 25);
+      }
     });
     observer.observe(document.documentElement || document.body, {childList:true, subtree:true});
   }
