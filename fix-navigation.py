@@ -183,6 +183,15 @@ def apply_mobile_header_nav(text):
 
 
 def apply_launchpad_social_links(text):
+    """Add optional project social links directly below Description in Launchpad Step 2 for every chain."""
+    # Remove any earlier injected versions, including a malformed version that was
+    # rendered as literal JavaScript at the bottom of the page.
+    text = re.sub(r'<style[^>]*id=["\']nxt-launchpad-social-links-css(?:-v3)?["\'][^>]*>.*?</style>', '', text, flags=re.S | re.I)
+    text = re.sub(r'<script[^>]*id=["\']nxt-launchpad-social-links-v3["\'][^>]*>.*?</script>', '', text, flags=re.S | re.I)
+    text = re.sub(r'\(function\s*\(\)\s*\{\s*var ID\s*=\s*[\'"]nxt-launchpad-social-links-v3[\'"].*?\}\)\(\)\s*;?', '', text, flags=re.S)
+    if 'id="nxt-launchpad-social-links-v4"' in text:
+        return text
+
     """Add the same optional social-link section to Launchpad Step 2 for every supported chain."""
     if 'id="nxt-launchpad-social-links-v4"' in text:
         return text
@@ -347,9 +356,9 @@ def apply_launchpad_social_links(text):
 '''
 
     if '</head>' in text:
-        text = text.replace('</head>', css + '\n</head>', 1)
-    if '</body>' in text:
-        text = text.replace('</body>', js + '\n</body>', 1)
+        text = text.replace('</head>', css + '\n' + js + '\n</head>', 1)
+    elif '<body' in text:
+        text = text.replace('<body', js + '\n<body', 1)
     return text
 
 def apply_coin_logos(text, path):
